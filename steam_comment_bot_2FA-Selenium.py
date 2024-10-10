@@ -142,7 +142,7 @@ def steam_login(driver, steam_username, steam_password):
 
 
 # Function to post a comment on a Steam profile
-def post_comment_in_new_tab(driver, profile_url, comment_text):
+def post_comment_in_new_tab(driver, profile_url, comment_text, last_tab=False):
     try:
         # Open a new tab and navigate to the profile
         driver.execute_script(f"window.open('{profile_url}', '_blank');")
@@ -169,9 +169,10 @@ def post_comment_in_new_tab(driver, profile_url, comment_text):
         # Wait for a few seconds to ensure the comment is posted
         time.sleep(5)
 
-        # Close the current tab and switch back to the first one
-        driver.close()
-        driver.switch_to.window(driver.window_handles[0])
+        # Close the current tab if it's not the last tab
+        if not last_tab:
+            driver.close()
+            driver.switch_to.window(driver.window_handles[0])
 
     except Exception as e:
         print(f"Error posting on profile {profile_url}: {str(e)}")
@@ -186,16 +187,16 @@ def main():
 
     # List of profile URLs to post comments to
     profile_urls = [
-        'https://steamcommunity.com/profiles/76561199773480552',
-        'https://steamcommunity.com/profiles/76561199206555367',
-        'https://steamcommunity.com/id/axellejtm/',
-        'https://steamcommunity.com/id/xfencly/',
-        'https://steamcommunity.com/id/ZyPact/',
-        'https://steamcommunity.com/id/nick_woer/',
-        'https://steamcommunity.com/id/sayNn_8/',
-        'https://steamcommunity.com/profiles/76561198958759969/',
-        'https://steamcommunity.com/profiles/76561199526159455/',
-        'https://steamcommunity.com/profiles/76561198171008581/'
+        'https://steamcommunity.com/profiles/76561199773480552', #1
+        'https://steamcommunity.com/profiles/76561199206555367', #2
+        'https://steamcommunity.com/id/axellejtm/',              #3
+        'https://steamcommunity.com/id/xfencly/',                #4
+        'https://steamcommunity.com/id/ZyPact/',                 #5
+        'https://steamcommunity.com/id/nick_woer/',              #6
+        'https://steamcommunity.com/id/sayNn_8/',                #7
+        'https://steamcommunity.com/profiles/76561198958759969/',#8
+        'https://steamcommunity.com/profiles/76561199526159455/',#9
+        'https://steamcommunity.com/profiles/76561198369076697/' #10
     ]
 
     # Path to the ChromeDriver
@@ -210,17 +211,33 @@ def main():
         steam_login(driver, steam_username, steam_password)
 
         # Post the comment to the profiles
-        for profile_url in profile_urls:
-            post_comment_in_new_tab(driver, profile_url, comment_text)
+        for index, profile_url in enumerate(profile_urls):
+            # Check if it's the last profile URL
+            last_tab = (index == len(profile_urls) - 1)
+
+            # Post the comment, keeping the last tab open
+            post_comment_in_new_tab(driver, profile_url, comment_text, last_tab)
 
             # Wait between opening new tabs
-            time.sleep(random.randint(5, 10))
+            if not last_tab:
+                time.sleep(random.randint(5, 10))
 
-    finally:
-        driver.quit()
+        # Once all comments are posted, open the Steam community homepage
+        driver.get("https://steamcommunity.com/")
+
+        # Ask the user if they want to close the browser
+        close_browser = input("Do you want to close the browser? (yes/no): ")
+        if close_browser.lower() == 'yes':
+            driver.quit()
+        else:
+            print("Browser will remain open.")
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
 
 
 # Run the script
 if __name__ == "__main__":
     main()
+
 
