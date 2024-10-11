@@ -1,0 +1,8 @@
+# Ignore the .env file containing sensitive data
+.env
+
+# Other common ignores
+*.log
+*.tmp
+node_modules/
+venv/
