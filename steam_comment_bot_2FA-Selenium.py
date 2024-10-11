@@ -121,7 +121,7 @@ def steam_login(driver, steam_username, steam_password):
 
     # Wait for 60 seconds before fetching the 2FA code from email
     print("Waiting 60 seconds for 2FA email...")
-    time.sleep(60)
+    time.sleep(20)
 
     # Now retrieve the 2FA code from Gmail
     steam_2fa_code = get_2fa_code_from_email()
