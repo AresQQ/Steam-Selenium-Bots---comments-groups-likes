@@ -196,7 +196,7 @@ def main():
         'https://steamcommunity.com/id/sayNn_8/',                #7
         'https://steamcommunity.com/profiles/76561198958759969/',#8
         'https://steamcommunity.com/profiles/76561199526159455/',#9
-        'https://steamcommunity.com/profiles/76561198369076697/' #10
+        'https://steamcommunity.com/profiles/76561198369076697/' #10 
     ]
 
     # Path to the ChromeDriver
