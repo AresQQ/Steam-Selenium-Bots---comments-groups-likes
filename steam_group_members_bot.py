@@ -1,35 +1,40 @@
 import random
+import time
+import os
+import imaplib
+import email
+from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import time
-import imaplib
-import email
 from email.header import decode_header
 from datetime import datetime, timedelta
-from bs4 import BeautifulSoup  # BeautifulSoup for HTML parsing
-from dotenv import load_dotenv
-import os
+from bs4 import BeautifulSoup
 
-# Load environment variables from the .env file
+# Load environment variables
 load_dotenv()
 
-# Get Gmail credentials from the environment variables
-gmail_user = os.getenv("GMAIL_USERNAME")
-gmail_password = os.getenv("GMAIL_PASSWORD")
+# Get the Steam login details and account list
+steam_accounts = os.getenv("STEAM_ACCOUNTS").split(',')
+GMAIL_USERNAME = os.getenv("GMAIL_USERNAME")
+GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 
 # Check if Gmail credentials are loaded properly
-if not gmail_user or not gmail_password:
+if not GMAIL_USERNAME or not GMAIL_PASSWORD:
     raise ValueError("Gmail username or password is not set in the .env file.")
+
+# Progress file to track where the script left off
+PROGRESS_FILE = 'progress.txt'
+
 
 # Function to retrieve the 2FA code from Gmail
 def get_2fa_code_from_email():
     try:
         # Connect to Gmail's IMAP server
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
-        mail.login(gmail_user, gmail_password)
+        mail.login(GMAIL_USERNAME, GMAIL_PASSWORD)
 
         # Select the inbox
         mail.select("inbox")
@@ -96,7 +101,8 @@ def get_2fa_code_from_email():
         print(f"Error retrieving 2FA code: {str(e)}")
         return None
 
-# Function to log in to Steam and handle the 2FA input manually
+
+# Function to log in to Steam and handle 2FA
 def steam_login(driver, steam_username, steam_password):
     driver.get("https://steamcommunity.com/login/home/")
 
@@ -118,7 +124,7 @@ def steam_login(driver, steam_username, steam_password):
     # Wait for the 2FA page to load (check if the 2FA code field appears)
     WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "twofactorcode_entry")))
 
-    # Wait before fetching the 2FA code from email sometimes problem occur when time is too low so random between 15-20 works fine
+    # Wait before fetching the 2FA code from email (15-20 seconds wait time)
     print("Waiting for 2FA email...")
     time.sleep(random.randint(15, 20))
 
@@ -136,8 +142,9 @@ def steam_login(driver, steam_username, steam_password):
     else:
         print("Failed to retrieve 2FA code.")
 
-    # Wait few seconds before continuing
+    # Wait a few seconds before continuing
     time.sleep(random.randint(2, 5))
+
 
 # Function to join a group on Steam
 def join_group(driver):
@@ -156,42 +163,97 @@ def join_group(driver):
     except Exception as e:
         print(f"Failed to join the group: {str(e)}")
 
+
+# Function to save progress to a file
+def save_progress(index):
+    with open(PROGRESS_FILE, "w") as f:
+        f.write(str(index))
+
+
+# Function to load progress from a file
+def load_progress():
+    if os.path.exists(PROGRESS_FILE):
+        with open(PROGRESS_FILE, "r") as f:
+            return int(f.read().strip())
+    else:
+        return 0  # Start from the beginning if no progress file exists
+
+
 # Main function
 def main():
-    # Get the Steam login details from the user
-    steam_username = input("Enter your Steam username: ")
-    steam_password = input("Enter your Steam password: ")
+    # Ask for the group link
+    group_url = input("Enter the Steam Group URL: ")
 
-    # URL of the Steam group to join
-    group_url = 'https://steamcommunity.com/groups/PONKEARMY'
+    # Ask if the user wants to start from a specific account
+    start_from_account = input("Do you want to start from a specific account? (yes/no): ").lower()
 
-    # Path to the ChromeDriver
-    chrome_driver_path = r'C:\chromedriver\chromedriver.exe'
+    if start_from_account == 'yes':
+        # Get the index from the user
+        while True:
+            try:
+                start_index = int(input(f"Enter the account index to start from (0 to {len(steam_accounts) - 1}): "))
+                if 0 <= start_index < len(steam_accounts):
+                    break
+                else:
+                    print("Invalid index. Please enter a valid number within the range.")
+            except ValueError:
+                print("Please enter a valid number.")
+    else:
+        start_index = load_progress()  # Load the saved progress if not specified
 
-    # Create the ChromeDriver service
-    service = Service(chrome_driver_path)
-    driver = webdriver.Chrome(service=service)
+    while True:
+        # Get the number of members to add
+        target_member_count = int(input("Enter the number of members you want to add: "))
 
-    try:
-        # Log in to Steam
-        steam_login(driver, steam_username, steam_password)
+        # Path to the ChromeDriver
+        chrome_driver_path = r'C:\chromedriver\chromedriver.exe'
 
-        # Navigate to the group page
-        driver.get(group_url)
+        # Create the ChromeDriver service
+        service = Service(chrome_driver_path)
 
-        # Join the Steam group
-        join_group(driver)
+        # Proceed with login and adding accounts
+        for i, account in enumerate(steam_accounts[start_index:start_index + target_member_count]):
+            username, password = account.split(":")
 
-        # Keep the browser open to see if everything works
-        print("The browser will remain open for you to verify.")
-        input("Press Enter to close the browser...")
+            # Reinitialize the driver for each new account to avoid session issues
+            driver = webdriver.Chrome(service=service)
+            try:
+                # Log in to Steam
+                steam_login(driver, username, password)
 
-        # Once user confirms, close the browser
-        driver.quit()
+                # Check if the account is already a member of the group
+                driver.get(group_url)
+                time.sleep(random.randint(2, 4))  # Give time for the page to load
 
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
+                try:
+                    # Check if the account is already a member (if the button says 'Leave Group')
+                    join_button = driver.find_element(By.CLASS_NAME, "btn_red_white_innerfade")
+                    print(f"Account {username} is already a member. Skipping.")
+                except:
+                    # Join the group
+                    join_group(driver)
+                    print(f"Successfully added account {username}.")
+            except Exception as e:
+                print(f"An error occurred: {e}")
+            finally:
+                driver.quit()
 
-# Run the script
+            # Save progress after each account
+            start_index += 1
+            save_progress(start_index)
+
+        # Ask if the user wants to add more members
+        more_members = input("Do you want to add more members? (yes/no): ")
+        if more_members.lower() != "yes":
+            break
+
+
+# Start the script
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
