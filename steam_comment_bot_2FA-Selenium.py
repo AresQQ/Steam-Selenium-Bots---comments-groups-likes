@@ -188,7 +188,7 @@ def main():
     # List of profile URLs to post comments to
     profile_urls = [
         'https://steamcommunity.com/profiles/76561199773480552', #1
-        'none', #2
+
         'https://steamcommunity.com/id/axellejtm/',              #3
         'https://steamcommunity.com/id/xfencly/',                #4
         'https://steamcommunity.com/profiles/76561198171008581/',#5
