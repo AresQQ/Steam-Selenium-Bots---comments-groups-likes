@@ -188,15 +188,15 @@ def main():
     # List of profile URLs to post comments to
     profile_urls = [
         'https://steamcommunity.com/profiles/76561199773480552', #1
-        'https://steamcommunity.com/profiles/76561199206555367', #2
+        'none', #2
         'https://steamcommunity.com/id/axellejtm/',              #3
         'https://steamcommunity.com/id/xfencly/',                #4
-        'https://steamcommunity.com/id/ZyPact/',                 #5
+        'https://steamcommunity.com/profiles/76561198171008581/',#5
         'https://steamcommunity.com/id/nick_woer/',              #6
         'https://steamcommunity.com/id/sayNn_8/',                #7
-        'https://steamcommunity.com/profiles/76561198958759969/',#8
+        'https://steamcommunity.com/id/n16htm4r3/',              #8
         'https://steamcommunity.com/profiles/76561199526159455/',#9
-        'https://steamcommunity.com/profiles/76561198369076697/' #10 
+        'https://steamcommunity.com/profiles/76561198369076697/' #10
     ]
 
     # Path to the ChromeDriver
@@ -239,5 +239,7 @@ def main():
 # Run the script
 if __name__ == "__main__":
     main()
+
+
 
 
