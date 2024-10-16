@@ -16,7 +16,7 @@ from bs4 import BeautifulSoup
 # Load environment variables
 load_dotenv()
 
-# Get the Steam login details and account list
+# Get the Steam login details and account list from the .env file
 steam_accounts = os.getenv("STEAM_ACCOUNTS").split(',')
 GMAIL_USERNAME = os.getenv("GMAIL_USERNAME")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
@@ -27,7 +27,6 @@ if not GMAIL_USERNAME or not GMAIL_PASSWORD:
 
 # Progress file to track where the script left off
 PROGRESS_FILE = 'progress.txt'
-
 
 # Function to retrieve the 2FA code from Gmail
 def get_2fa_code_from_email():
@@ -101,7 +100,6 @@ def get_2fa_code_from_email():
         print(f"Error retrieving 2FA code: {str(e)}")
         return None
 
-
 # Function to log in to Steam and handle 2FA
 def steam_login(driver, steam_username, steam_password):
     driver.get("https://steamcommunity.com/login/home/")
@@ -145,32 +143,40 @@ def steam_login(driver, steam_username, steam_password):
     # Wait a few seconds before continuing
     time.sleep(random.randint(2, 5))
 
-
-# Function to join a group on Steam
-def join_group(driver):
+# Function to like and favorite an item with immediate closing
+def like_and_favorite(driver):
     try:
-        # Wait for the "Join Group" button to become visible and clickable
-        join_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "a.btn_green_white_innerfade.btn_medium"))
+        # Wait for the Like button to be visible and clickable
+        like_button = WebDriverWait(driver, 15).until(
+            EC.visibility_of_element_located((By.ID, "VoteUpBtn"))
         )
+        like_button.click()
+        print("Successfully liked the item.")
 
-        # Click the "Join Group" button (this will trigger the form submission)
-        join_button.click()
+        # Wait briefly to ensure the like action is registered
+        time.sleep(random.uniform(1.5, 2.5))
 
-        time.sleep(3)
+        # Wait for the Favorite button to be visible and clickable
+        favorite_button = WebDriverWait(driver, 15).until(
+            EC.visibility_of_element_located((By.CLASS_NAME, "favoriteOption"))
+        )
+        favorite_button.click()
+        print("Successfully favorited the item.")
 
-        print("Successfully clicked the 'Join Group' button!")
-        print("You have successfully joined the group!")
+        # Wait briefly to ensure the favorite action is registered
+        time.sleep(random.uniform(1.5, 2.5))
+
+        # Close the driver after the first like and favorite
+        driver.quit()
+        print("Closed the browser after performing actions.")
 
     except Exception as e:
-        print(f"Failed to join the group: {str(e)}")
-
+        print(f"Failed to like/favorite the item: {e}")
 
 # Function to save progress to a file
 def save_progress(index):
     with open(PROGRESS_FILE, "w") as f:
         f.write(str(index))
-
 
 # Function to load progress from a file
 def load_progress():
@@ -183,8 +189,8 @@ def load_progress():
 
 # Main function
 def main():
-    # Ask for the group link
-    group_url = input("Enter the Steam Group URL: ")
+    # Ask for the Steam item URL
+    item_url = input("Enter the Steam item URL (image or review): ")
 
     # Ask if the user wants to start from a specific account
     start_from_account = input("Do you want to start from a specific account? (yes/no): ").lower()
@@ -203,56 +209,55 @@ def main():
     else:
         start_index = load_progress()  # Load the saved progress if not specified
 
-    while True:
-        # Get the number of members to add
-        target_member_count = int(input("Enter the number of members you want to add: "))
+    # Get the number of likes and favorites to add
+    target_like_count = int(input("Enter the number of likes you want to add: "))
+    target_favorite_count = int(input("Enter the number of favorites you want to add: "))
 
-        # Path to the ChromeDriver
-        chrome_driver_path = r'C:\chromedriver\chromedriver.exe'
+    # Path to the ChromeDriver
+    chrome_driver_path = r'C:\chromedriver\chromedriver.exe'
 
-        # Create the ChromeDriver service
-        service = Service(chrome_driver_path)
+    # Create the ChromeDriver service
+    service = Service(chrome_driver_path)
 
-        # Proceed with login and adding accounts
-        for i, account in enumerate(steam_accounts[start_index:start_index + target_member_count]):
-            username, password = account.split(":")
+    # Proceed with login and adding accounts
+    for i in range(start_index, len(steam_accounts)):
+        account = steam_accounts[i]
+        username, password = account.split(":")
 
-            # Reinitialize the driver for each new account to avoid session issues
-            driver = webdriver.Chrome(service=service)
-            try:
-                # Log in to Steam
-                steam_login(driver, username, password)
+        # Create a new instance of the Chrome driver for each account
+        driver = webdriver.Chrome(service=service)
 
-                # Check if the account is already a member of the group
-                driver.get(group_url)
-                time.sleep(random.randint(2, 4))  # Give time for the page to load
+        try:
+            # Log in to Steam
+            steam_login(driver, username, password)
 
-                try:
-                    # Check if the account is already a member (if the button says 'Leave Group')
-                    join_button = driver.find_element(By.CLASS_NAME, "btn_red_white_innerfade")
-                    print(f"Account {username} is already a member. Skipping.")
-                except:
-                    # Join the group
-                    join_group(driver)
-                    print(f"Successfully added account {username}.")
-            except Exception as e:
-                print(f"An error occurred: {e}")
-            finally:
-                driver.quit()
+            # Navigate to the specified item URL
+            driver.get(item_url)
+            time.sleep(random.uniform(2, 5))  # Random wait for page to load
 
-            # Save progress after each account
-            start_index += 1
-            save_progress(start_index)
+            # Perform like and favorite actions once
+            like_and_favorite(driver)
 
-        # Ask if the user wants to add more members
-        more_members = input("Do you want to add more members? (yes/no): ")
-        if more_members.lower() != "yes":
-            break
+            print(f"Processed account {username}.")
+
+        except Exception as e:
+            print(f"An error occurred with account {username}: {e}")
+        finally:
+            if driver:  # Check if driver exists and quit
+                driver.quit()  # Ensure the driver quits even on error
+            time.sleep(random.uniform(2, 5))  # Optional wait before starting next account
+
+        # Save progress after each account
+        save_progress(i + 1)  # Save the next account index
 
 
-# Start the script
 if __name__ == "__main__":
     main()
+
+
+
+
+
 
 
 

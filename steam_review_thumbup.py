@@ -16,7 +16,7 @@ from bs4 import BeautifulSoup
 # Load environment variables
 load_dotenv()
 
-# Get the Steam login details and account list
+# Get the Steam login details and account list from the .env file
 steam_accounts = os.getenv("STEAM_ACCOUNTS").split(',')
 GMAIL_USERNAME = os.getenv("GMAIL_USERNAME")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
@@ -27,7 +27,6 @@ if not GMAIL_USERNAME or not GMAIL_PASSWORD:
 
 # Progress file to track where the script left off
 PROGRESS_FILE = 'progress.txt'
-
 
 # Function to retrieve the 2FA code from Gmail
 def get_2fa_code_from_email():
@@ -101,7 +100,6 @@ def get_2fa_code_from_email():
         print(f"Error retrieving 2FA code: {str(e)}")
         return None
 
-
 # Function to log in to Steam and handle 2FA
 def steam_login(driver, steam_username, steam_password):
     driver.get("https://steamcommunity.com/login/home/")
@@ -145,32 +143,36 @@ def steam_login(driver, steam_username, steam_password):
     # Wait a few seconds before continuing
     time.sleep(random.randint(2, 5))
 
-
-# Function to join a group on Steam
-def join_group(driver):
+# Function to vote "Yes" on a review
+def vote_yes(driver):
     try:
-        # Wait for the "Join Group" button to become visible and clickable
-        join_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "a.btn_green_white_innerfade.btn_medium"))
+        # Wait for the "Yes" button to be visible and clickable
+        yes_button = WebDriverWait(driver, 15).until(
+            EC.visibility_of_element_located((By.ID, "RecommendationVoteUpBtn172274536"))  # Update ID as needed
         )
+        yes_button.click()
+        print("Successfully voted 'Yes' on the review.")
 
-        # Click the "Join Group" button (this will trigger the form submission)
-        join_button.click()
-
-        time.sleep(3)
-
-        print("Successfully clicked the 'Join Group' button!")
-        print("You have successfully joined the group!")
+        # Wait briefly to ensure the vote action is registered
+        time.sleep(random.uniform(1.5, 2.5))
 
     except Exception as e:
-        print(f"Failed to join the group: {str(e)}")
+        print(f"Failed to vote 'Yes' on the review: {e}")
 
+# Function to log out of Steam
+def steam_logout(driver):
+    try:
+        # Navigate to the Steam logout page
+        driver.get("https://store.steampowered.com/logout/")
+        print("Logged out of Steam.")
+        time.sleep(2)  # Wait for logout to process
+    except Exception as e:
+        print(f"Failed to log out: {e}")
 
 # Function to save progress to a file
 def save_progress(index):
     with open(PROGRESS_FILE, "w") as f:
         f.write(str(index))
-
 
 # Function to load progress from a file
 def load_progress():
@@ -183,8 +185,8 @@ def load_progress():
 
 # Main function
 def main():
-    # Ask for the group link
-    group_url = input("Enter the Steam Group URL: ")
+    # Ask for the Steam item URL
+    item_url = input("Enter the Steam review URL: ")
 
     # Ask if the user wants to start from a specific account
     start_from_account = input("Do you want to start from a specific account? (yes/no): ").lower()
@@ -203,59 +205,48 @@ def main():
     else:
         start_index = load_progress()  # Load the saved progress if not specified
 
-    while True:
-        # Get the number of members to add
-        target_member_count = int(input("Enter the number of members you want to add: "))
+    # Path to the ChromeDriver
+    chrome_driver_path = r'C:\chromedriver\chromedriver.exe'  # Update to the correct path
 
-        # Path to the ChromeDriver
-        chrome_driver_path = r'C:\chromedriver\chromedriver.exe'
+    # Get the number of votes to add
+    target_vote_count = int(input("Enter the number of 'Yes' votes you want to add: "))
 
-        # Create the ChromeDriver service
-        service = Service(chrome_driver_path)
+    # Loop through the selected accounts starting from the specified index
+    for i in range(start_index, len(steam_accounts)):
+        username, password = steam_accounts[i].split(":")
+        print(f"Processing account {username}...")
 
-        # Proceed with login and adding accounts
-        for i, account in enumerate(steam_accounts[start_index:start_index + target_member_count]):
-            username, password = account.split(":")
+        # Create a new instance of Chrome WebDriver
+        driver = webdriver.Chrome(service=Service(chrome_driver_path))
 
-            # Reinitialize the driver for each new account to avoid session issues
-            driver = webdriver.Chrome(service=service)
-            try:
-                # Log in to Steam
-                steam_login(driver, username, password)
+        try:
+            # Log in to Steam
+            steam_login(driver, username, password)
 
-                # Check if the account is already a member of the group
-                driver.get(group_url)
-                time.sleep(random.randint(2, 4))  # Give time for the page to load
+            # Navigate to the review URL
+            driver.get(item_url)
+            time.sleep(random.uniform(2, 5))  # Random wait for page to load
 
-                try:
-                    # Check if the account is already a member (if the button says 'Leave Group')
-                    join_button = driver.find_element(By.CLASS_NAME, "btn_red_white_innerfade")
-                    print(f"Account {username} is already a member. Skipping.")
-                except:
-                    # Join the group
-                    join_group(driver)
-                    print(f"Successfully added account {username}.")
-            except Exception as e:
-                print(f"An error occurred: {e}")
-            finally:
-                driver.quit()
+            # Perform voting "Yes" actions
+            for _ in range(target_vote_count):
+                vote_yes(driver)
 
-            # Save progress after each account
-            start_index += 1
-            save_progress(start_index)
+            print(f"Processed account {username}.")
 
-        # Ask if the user wants to add more members
-        more_members = input("Do you want to add more members? (yes/no): ")
-        if more_members.lower() != "yes":
-            break
+        except Exception as e:
+            print(f"An error occurred with account {username}: {e}")
 
+        # Log out from Steam before moving to the next account
+        steam_logout(driver)
 
-# Start the script
+        # Save progress after each account
+        save_progress(i + 1)  # Save the next account index
+
+        # Ensure the driver quits after processing all votes for the account
+        driver.quit()  # Quit the driver only after all actions are completed
+
+        # Optional wait before starting the next account
+        time.sleep(random.uniform(2, 5))
+
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
