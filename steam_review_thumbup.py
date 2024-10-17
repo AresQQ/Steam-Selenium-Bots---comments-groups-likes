@@ -25,9 +25,6 @@ GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 if not GMAIL_USERNAME or not GMAIL_PASSWORD:
     raise ValueError("Gmail username or password is not set in the .env file.")
 
-# Progress file to track where the script left off
-PROGRESS_FILE = 'progress.txt'
-
 # Function to retrieve the 2FA code from Gmail
 def get_2fa_code_from_email():
     try:
@@ -143,50 +140,26 @@ def steam_login(driver, steam_username, steam_password):
     # Wait a few seconds before continuing
     time.sleep(random.randint(2, 5))
 
-# Function to vote "Yes" on a review
-def vote_yes(driver):
+# Function to vote 'Yes' on a Steam review
+def vote_yes_on_review(driver, review_url):
+    # Go to the review URL
+    driver.get(review_url)
+    time.sleep(2)  # Wait for the page to load completely
+
     try:
-        # Wait for the "Yes" button to be visible and clickable
-        yes_button = WebDriverWait(driver, 15).until(
-            EC.visibility_of_element_located((By.ID, "RecommendationVoteUpBtn172274536"))  # Update ID as needed
+        # Wait for the "Yes" vote button to be visible and clickable
+        vote_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "span[id^='RecommendationVoteUpBtn']"))
         )
-        yes_button.click()
-        print("Successfully voted 'Yes' on the review.")
-
-        # Wait briefly to ensure the vote action is registered
-        time.sleep(random.uniform(1.5, 2.5))
-
+        vote_button.click()
+        print("Successfully voted 'Yes' on the review!")
     except Exception as e:
         print(f"Failed to vote 'Yes' on the review: {e}")
 
-# Function to log out of Steam
-def steam_logout(driver):
-    try:
-        # Navigate to the Steam logout page
-        driver.get("https://store.steampowered.com/logout/")
-        print("Logged out of Steam.")
-        time.sleep(2)  # Wait for logout to process
-    except Exception as e:
-        print(f"Failed to log out: {e}")
-
-# Function to save progress to a file
-def save_progress(index):
-    with open(PROGRESS_FILE, "w") as f:
-        f.write(str(index))
-
-# Function to load progress from a file
-def load_progress():
-    if os.path.exists(PROGRESS_FILE):
-        with open(PROGRESS_FILE, "r") as f:
-            return int(f.read().strip())
-    else:
-        return 0  # Start from the beginning if no progress file exists
-
-
 # Main function
 def main():
-    # Ask for the Steam item URL
-    item_url = input("Enter the Steam review URL: ")
+    # Ask for the Steam review URL
+    review_url = input("Enter the Steam review URL: ")
 
     # Ask if the user wants to start from a specific account
     start_from_account = input("Do you want to start from a specific account? (yes/no): ").lower()
@@ -203,50 +176,38 @@ def main():
             except ValueError:
                 print("Please enter a valid number.")
     else:
-        start_index = load_progress()  # Load the saved progress if not specified
+        start_index = 0  # Start from the beginning if not specified
 
     # Path to the ChromeDriver
-    chrome_driver_path = r'C:\chromedriver\chromedriver.exe'  # Update to the correct path
+    chrome_driver_path = r'C:\chromedriver\chromedriver.exe'
 
-    # Get the number of votes to add
-    target_vote_count = int(input("Enter the number of 'Yes' votes you want to add: "))
+    # Create the ChromeDriver service
+    service = Service(chrome_driver_path)
 
-    # Loop through the selected accounts starting from the specified index
+    # Proceed with login and voting
     for i in range(start_index, len(steam_accounts)):
-        username, password = steam_accounts[i].split(":")
-        print(f"Processing account {username}...")
+        account = steam_accounts[i]
+        username, password = account.split(":")
 
-        # Create a new instance of Chrome WebDriver
-        driver = webdriver.Chrome(service=Service(chrome_driver_path))
+        # Create a new instance of the Chrome driver for each account
+        driver = webdriver.Chrome(service=service)
 
         try:
             # Log in to Steam
             steam_login(driver, username, password)
 
-            # Navigate to the review URL
-            driver.get(item_url)
-            time.sleep(random.uniform(2, 5))  # Random wait for page to load
-
-            # Perform voting "Yes" actions
-            for _ in range(target_vote_count):
-                vote_yes(driver)
+            # Vote 'Yes' on the review
+            vote_yes_on_review(driver, review_url)
 
             print(f"Processed account {username}.")
 
         except Exception as e:
             print(f"An error occurred with account {username}: {e}")
-
-        # Log out from Steam before moving to the next account
-        steam_logout(driver)
-
-        # Save progress after each account
-        save_progress(i + 1)  # Save the next account index
-
-        # Ensure the driver quits after processing all votes for the account
-        driver.quit()  # Quit the driver only after all actions are completed
-
-        # Optional wait before starting the next account
-        time.sleep(random.uniform(2, 5))
+        finally:
+            if driver:  # Check if driver exists and quit
+                driver.quit()  # Ensure the driver quits even on error
+            time.sleep(random.uniform(2, 5))  # Optional wait before starting the next account
 
 if __name__ == "__main__":
     main()
+
