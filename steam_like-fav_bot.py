@@ -101,7 +101,7 @@ def get_2fa_code_from_email():
         return None
 
 # Function to log in to Steam and handle 2FA
-def steam_login(driver, steam_username, steam_password):
+def steam_login(driver, steam_username, steam_password, position):
     driver.get("https://steamcommunity.com/login/home/")
 
     # Wait for the username field to load
@@ -123,7 +123,7 @@ def steam_login(driver, steam_username, steam_password):
     WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "twofactorcode_entry")))
 
     # Wait before fetching the 2FA code from email (15-20 seconds wait time)
-    print("Waiting for 2FA email...")
+    print(f"Waiting for 2FA email for account {steam_username} [Position: {position}]...")
     time.sleep(random.randint(15, 20))
 
     # Now retrieve the 2FA code from Gmail
@@ -136,22 +136,22 @@ def steam_login(driver, steam_username, steam_password):
             if i < len(two_factor_fields):
                 two_factor_fields[i].send_keys(digit)
 
-        print("Logged in successfully!")
+        print(f"Logged in successfully with account {steam_username} [Position: {position}]!")
     else:
-        print("Failed to retrieve 2FA code.")
+        print(f"Failed to retrieve 2FA code for account {steam_username} [Position: {position}].")
 
     # Wait a few seconds before continuing
     time.sleep(random.randint(2, 5))
 
 # Function to like and favorite an item with immediate closing
-def like_and_favorite(driver):
+def like_and_favorite(driver, username, position):
     try:
         # Wait for the Like button to be visible and clickable
         like_button = WebDriverWait(driver, 15).until(
             EC.visibility_of_element_located((By.ID, "VoteUpBtn"))
         )
         like_button.click()
-        print("Successfully liked the item.")
+        print(f"Account {username} [Position: {position}] successfully liked the item.")
 
         # Wait briefly to ensure the like action is registered
         time.sleep(random.uniform(1.5, 2.5))
@@ -161,17 +161,17 @@ def like_and_favorite(driver):
             EC.visibility_of_element_located((By.CLASS_NAME, "favoriteOption"))
         )
         favorite_button.click()
-        print("Successfully favorited the item.")
+        print(f"Account {username} [Position: {position}] successfully favorited the item.")
 
         # Wait briefly to ensure the favorite action is registered
         time.sleep(random.uniform(1.5, 2.5))
 
         # Close the driver after the first like and favorite
         driver.quit()
-        print("Closed the browser after performing actions.")
+        print(f"Account {username} [Position: {position}] closed the browser after performing actions.")
 
     except Exception as e:
-        print(f"Failed to like/favorite the item: {e}")
+        print(f"Failed to like/favorite the item for account {username} [Position: {position}]: {e}")
 
 # Function to save progress to a file
 def save_progress(index):
@@ -229,19 +229,19 @@ def main():
 
         try:
             # Log in to Steam
-            steam_login(driver, username, password)
+            steam_login(driver, username, password, i)
 
             # Navigate to the specified item URL
             driver.get(item_url)
             time.sleep(random.uniform(2, 5))  # Random wait for page to load
 
             # Perform like and favorite actions once
-            like_and_favorite(driver)
+            like_and_favorite(driver, username, i)
 
-            print(f"Processed account {username}.")
+            print(f"Processed account {username} [Position: {i}].")
 
         except Exception as e:
-            print(f"An error occurred with account {username}: {e}")
+            print(f"An error occurred with account {username} [Position: {i}]: {e}")
         finally:
             if driver:  # Check if driver exists and quit
                 driver.quit()  # Ensure the driver quits even on error
@@ -253,6 +253,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
