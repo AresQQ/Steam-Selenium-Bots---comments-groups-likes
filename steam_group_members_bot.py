@@ -50,7 +50,7 @@ def get_2fa_code_from_email():
         status, messages = mail.search(None, f'(UNSEEN FROM "noreply@steampowered.com" SINCE "{search_time}")')
 
         if status != "OK":
-            print("No recent unread emails from Steam found.")
+            print(f"No recent unread emails from Steam found for account [Position: {position}].")
             return None
 
         # Get the latest email
@@ -60,7 +60,7 @@ def get_2fa_code_from_email():
         # Fetch the email
         status, msg_data = mail.fetch(latest_email_id, "(RFC822)")
         if status != "OK":
-            print("Failed to fetch email.")
+            print(f"Failed to fetch email for account [Position: {position}].")
             return None
 
         # Parse the email content
@@ -94,16 +94,16 @@ def get_2fa_code_from_email():
                         if len(code) == 5:
                             return code
 
-        print("2FA code not found in email.")
+        print(f"2FA code not found in email for account [Position: {position}].")
         return None
 
     except Exception as e:
-        print(f"Error retrieving 2FA code: {str(e)}")
+        print(f"Error retrieving 2FA code for account [Position: {position}]: {str(e)}")
         return None
 
 
 # Function to log in to Steam and handle 2FA
-def steam_login(driver, steam_username, steam_password):
+def steam_login(driver, steam_username, steam_password, position):
     driver.get("https://steamcommunity.com/login/home/")
 
     # Wait for the username field to load
@@ -125,7 +125,7 @@ def steam_login(driver, steam_username, steam_password):
     WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "twofactorcode_entry")))
 
     # Wait before fetching the 2FA code from email (15-20 seconds wait time)
-    print("Waiting for 2FA email...")
+    print(f"Waiting for 2FA email for account {steam_username} [Position: {position - 1}]...")
     time.sleep(random.randint(15, 20))
 
     # Now retrieve the 2FA code from Gmail
@@ -138,16 +138,16 @@ def steam_login(driver, steam_username, steam_password):
             if i < len(two_factor_fields):
                 two_factor_fields[i].send_keys(digit)
 
-        print("Logged in successfully!")
+        print(f"Logged in successfully with account {steam_username} [Position: {position - 1}]!")
     else:
-        print("Failed to retrieve 2FA code.")
+        print(f"Failed to retrieve 2FA code for account {steam_username} [Position: {position - 1}].")
 
     # Wait a few seconds before continuing
     time.sleep(random.randint(2, 5))
 
 
 # Function to join a group on Steam
-def join_group(driver):
+def join_group(driver, username, position):
     try:
         # Wait for the "Join Group" button to become visible and clickable
         join_button = WebDriverWait(driver, 10).until(
@@ -159,11 +159,11 @@ def join_group(driver):
 
         time.sleep(3)
 
-        print("Successfully clicked the 'Join Group' button!")
-        print("You have successfully joined the group!")
+        print(f"Account {username} [Position: {position - 1}] successfully clicked the 'Join Group' button!")
+        print(f"Account {username} [Position: {position - 1}] has successfully joined the group!")
 
     except Exception as e:
-        print(f"Failed to join the group: {str(e)}")
+        print(f"Failed to join the group for account {username} [Position: {position - 1}]: {str(e)}")
 
 
 # Function to save progress to a file
@@ -197,7 +197,7 @@ def main():
                 if 0 <= start_index < len(steam_accounts):
                     break
                 else:
-                    print("Invalid index. Please enter a valid number within the range.")
+                    print(f"Invalid index. Please enter a valid number within the range for account [Position: {start_index}].")
             except ValueError:
                 print("Please enter a valid number.")
     else:
@@ -214,14 +214,15 @@ def main():
         service = Service(chrome_driver_path)
 
         # Proceed with login and adding accounts
-        for i, account in enumerate(steam_accounts[start_index:start_index + target_member_count]):
+        for i, account in enumerate(steam_accounts[start_index:start_index + target_member_count], start=start_index):
             username, password = account.split(":")
+            position = i + 1  # Adjust the position to match the real index (0-based)
 
             # Reinitialize the driver for each new account to avoid session issues
             driver = webdriver.Chrome(service=service)
             try:
                 # Log in to Steam
-                steam_login(driver, username, password)
+                steam_login(driver, username, password, position)
 
                 # Check if the account is already a member of the group
                 driver.get(group_url)
@@ -230,13 +231,13 @@ def main():
                 try:
                     # Check if the account is already a member (if the button says 'Leave Group')
                     join_button = driver.find_element(By.CLASS_NAME, "btn_red_white_innerfade")
-                    print(f"Account {username} is already a member. Skipping.")
+                    print(f"Account {username} [Position {position}] is already a member. Skipping.")
                 except:
                     # Join the group
-                    join_group(driver)
-                    print(f"Successfully added account {username}.")
+                    join_group(driver, username, position)
+                    print(f"Successfully added account {username} [Position {position}].")
             except Exception as e:
-                print(f"An error occurred: {e}")
+                print(f"An error occurred with account {username} [Position {position}]: {e}")
             finally:
                 driver.quit()
 
@@ -253,6 +254,7 @@ def main():
 # Start the script
 if __name__ == "__main__":
     main()
+
 
 
 
