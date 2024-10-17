@@ -98,7 +98,7 @@ def get_2fa_code_from_email():
         return None
 
 # Function to log in to Steam and handle 2FA
-def steam_login(driver, steam_username, steam_password):
+def steam_login(driver, steam_username, steam_password, account_position):
     driver.get("https://steamcommunity.com/login/home/")
 
     # Wait for the username field to load
@@ -120,7 +120,7 @@ def steam_login(driver, steam_username, steam_password):
     WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "twofactorcode_entry")))
 
     # Wait before fetching the 2FA code from email (15-20 seconds wait time)
-    print("Waiting for 2FA email...")
+    print(f"Account {steam_username} [Position: {account_position}]: Waiting for 2FA email...")
     time.sleep(random.randint(15, 20))
 
     # Now retrieve the 2FA code from Gmail
@@ -133,15 +133,15 @@ def steam_login(driver, steam_username, steam_password):
             if i < len(two_factor_fields):
                 two_factor_fields[i].send_keys(digit)
 
-        print("Logged in successfully!")
+        print(f"Account {steam_username} [Position: {account_position}]: Logged in successfully!")
     else:
-        print("Failed to retrieve 2FA code.")
+        print(f"Account {steam_username} [Position: {account_position}]: Failed to retrieve 2FA code.")
 
     # Wait a few seconds before continuing
     time.sleep(random.randint(2, 5))
 
 # Function to vote 'Yes' on a Steam review
-def vote_yes_on_review(driver, review_url):
+def vote_yes_on_review(driver, review_url, account_username, account_position):
     # Go to the review URL
     driver.get(review_url)
     time.sleep(2)  # Wait for the page to load completely
@@ -152,9 +152,9 @@ def vote_yes_on_review(driver, review_url):
             EC.element_to_be_clickable((By.CSS_SELECTOR, "span[id^='RecommendationVoteUpBtn']"))
         )
         vote_button.click()
-        print("Successfully voted 'Yes' on the review!")
+        print(f"Account {account_username} [Position: {account_position}]: Successfully voted 'Yes' on the review!")
     except Exception as e:
-        print(f"Failed to vote 'Yes' on the review: {e}")
+        print(f"Account {account_username} [Position: {account_position}]: Failed to vote 'Yes' on the review: {e}")
 
 # Main function
 def main():
@@ -189,20 +189,23 @@ def main():
         account = steam_accounts[i]
         username, password = account.split(":")
 
+        # Print account info with its position
+        print(f"Account {username} [Position: {i}]")
+
         # Create a new instance of the Chrome driver for each account
         driver = webdriver.Chrome(service=service)
 
         try:
             # Log in to Steam
-            steam_login(driver, username, password)
+            steam_login(driver, username, password, i)
 
             # Vote 'Yes' on the review
-            vote_yes_on_review(driver, review_url)
+            vote_yes_on_review(driver, review_url, username, i)
 
-            print(f"Processed account {username}.")
+            print(f"Account {username} [Position: {i}]: Processed successfully.")
 
         except Exception as e:
-            print(f"An error occurred with account {username}: {e}")
+            print(f"Account {username} [Position: {i}]: An error occurred: {e}")
         finally:
             if driver:  # Check if driver exists and quit
                 driver.quit()  # Ensure the driver quits even on error
@@ -210,4 +213,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
