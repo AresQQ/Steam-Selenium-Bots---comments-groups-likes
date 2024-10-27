@@ -6,7 +6,7 @@ from email.header import decode_header
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup  # For HTML parsing
 from dotenv import load_dotenv
-import pyautogui
+import pyautogui  # For GUI automation
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -108,22 +108,27 @@ def get_2fa_code_from_email():
 
 # Function to focus the Steam window
 def focus_steam_window():
-    steam_path = "D:\\Steam\\steam.exe"  # Adjust the path as necessary
+    steam_path = "D:\\Steam\\steam.exe"  # Adjusted path for Steam
     if os.path.exists(steam_path):
         os.startfile(steam_path)  # Launch Steam
-        time.sleep(10)  # Wait for Steam to open
-        pyautogui.getWindowsWithTitle("Steam")[0].activate()  # Activate Steam window
-        time.sleep(2)
+        time.sleep(1)  # Wait for Steam to open
+        # Activate Steam window
+        windows = pyautogui.getWindowsWithTitle("Steam")
+        if windows:
+            windows[0].activate()  # Activate Steam window
+            time.sleep(2)
+        else:
+            print("Steam window not found.")
     else:
         print("Steam executable not found at the specified path.")
 
 
 # Function to log into Steam
 def steam_login(steam_username, steam_password):
+    print(f"Attempting to log in to Steam account: {steam_username}")
     focus_steam_window()  # Ensure Steam is open and focused
 
-    # Wait for the login window to appear
-    time.sleep(5)  # Adjust time as needed
+    time.sleep(1)  # Reduced time for better efficiency
 
     # Enter the username
     pyautogui.write(steam_username)
@@ -132,7 +137,7 @@ def steam_login(steam_username, steam_password):
     pyautogui.press('enter')  # Submit the login
 
     # Wait for the 2FA code entry to appear
-    time.sleep(15)  # Adjust as necessary
+    time.sleep(5)  # Reduced from 15 seconds to 5 seconds
 
     # Now retrieve the 2FA code from Gmail
     steam_2fa_code = get_2fa_code_from_email()
@@ -144,6 +149,29 @@ def steam_login(steam_username, steam_password):
         print("Logged in successfully!")
     else:
         print("Failed to retrieve 2FA code.")
+
+
+# Function to launch Counter-Strike 2 with the console option and connect to the server
+def launch_counter_strike():
+    print("Launching Counter-Strike 2...")
+    os.system("start steam://launch/730/-console")  # Launch CS2 with console option
+    time.sleep(7)  # Wait for the game to fully load
+
+    print("Pressing ESC to skip intro...")
+    pyautogui.press('esc')  # Skip the intro
+    time.sleep(2)  # Wait a moment after pressing ESC
+
+    print("Pressing ESC again...")
+    pyautogui.press('esc')  # Skip any additional loading screens
+    time.sleep(2)  # Wait for a moment
+
+    print("Opening console...")
+    pyautogui.press('`')  # Open the console using the backtick key directly
+    time.sleep(5)  # Wait longer for the console to be ready
+
+    print("Connecting to the server...")
+    pyautogui.write("connect imbaboost.ggwp.cc:26876")  # Type the connect command
+    pyautogui.press('enter')  # Execute the connect command
 
 
 # Main function
@@ -162,12 +190,26 @@ def main():
     steam_username = accounts[account_index]["username"]
     steam_password = accounts[account_index]["password"]
 
+    time.sleep(1)  # Reduced wait time to 1 second before login
     steam_login(steam_username, steam_password)
+
+    # Delay before launching Counter-Strike 2
+    time.sleep(3)  # Adjusted to 3 seconds before launching
+    launch_counter_strike()
 
 
 # Run the script
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
+
 
 
 
